@@ -1,4 +1,4 @@
-# Bilinear-Interpolation
+# Bilinear Interpolation
 
 The Bilinear Interpolation is a simple program written in MIPS assembly language using MARS Simulator. Program allows user to specify width and height of a drawn rectangle as well as four colors of every vertices in order : upper left, upper right, lower left, lower right. Output rectangle is saved in heap address range and can be displayed using build-in MARS Bitmap Display set with a width parameter to 1024.
 
