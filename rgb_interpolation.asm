@@ -4,7 +4,10 @@
 # Output :  colored pixel of a rectangle in a heap address range 
 	
 	.data
-	
+
+heap_addr:	.word 0		#stores address to the begging of heap memory map
+alloc_bites:	.word 0		#stores value of currently allocated bites
+
 	.eqv	FRAME_WIDTH 1024	#bitmap display width
 	
 	#masks used to extract values of particular color specified in the input
@@ -17,22 +20,6 @@
 	#reads single integer and stores it in $v0
 	.macro read_int()	
 	li	$v0, 5
-	syscall
-	.end_macro
-	
-#--------------------------------------------------------------------------------------------------------
-	
-	#allocates memory for pixels of bitmap (registers used $a0, $v0)
-	.macro pixel_alloc(%w, %h)	
-	#pixel_to_alloc = ((height-1) * frame_width + width) * 4
-	subiu	$a0, %h, 1
-	li	$t0, FRAME_WIDTH
-	multu	$a0, $t2
-	mflo	$a0	#moves the result of multiplication 
-	addu	$a0, $a0, %w
-	sll	$a0, $a0, 2   #multiply result by 4 (sizeof(pixel) == 4)
-	
-	li	$v0, 9	#call allocation 
 	syscall
 	.end_macro
 
@@ -82,34 +69,74 @@
 	add	$t3, $t3, $t4
 	.end_macro
 	
+#--------------------------------------------------------------------------------------------------------
+	#check correctness of the input
+	.macro check_input(%input)
+	blt	%input, $zero, terminate
+	.end_macro
 
 	.text
 #============================== MAIN ==========================================
 main:
-#============================= READING INPUTS AND ALLOCATING ==================
+#============================= READING INPUTS AND ALLOCATING BITES ============
 	read_int()		#reads width
 	move	$s0, $v0	#hold width of rectangle
+	check_input($s0)
 		
 	read_int()		#reads height
 	move	$s1, $v0
+	check_input($s1)
 	
-	pixel_alloc($s0, $s1)	#allocate memory on heap
-	move	$s2, $v0	#$s2 points now to allocated heap
+	#check if additional allocation of memory is needed
+	la	$t0, alloc_bites
+	lw	$t1, ($t0)
+	#bites_needed = ((rect_height-1) * frame_width + rect_width) * 4
+	subiu	$t0, $s1, 1
+	li	$t2, FRAME_WIDTH
+	multu	$t0, $t2
+	mflo	$t0	#moves the result of multiplication 
+	addu	$t0, $t0, $s0
+	sll	$t0, $t0, 2   #multiply result by 4 (sizeof(pixel) == 4)
+	
+	bge	$t1, $t0, skip_allocation
+	subu	$a0, $t0, $t1
+	li	$v0, 9
+	syscall		#allocate remaining bites
+	
+	la	$t1, alloc_bites	
+	sw	$t0, ($t1)		#save value of currently allocated bites
+	
+	la	$t0, heap_addr	#save ptr to the beggining of heap memory map
+	lw	$t1, ($t0)	
+	bnez	$t1, skip_allocation
+	sw	$v0, ($t0)
+	
+skip_allocation:
+	#restore register to point at the beggining of heap memory map
+	la	$t0, heap_addr
+	lw	$s2, ($t0)
 	
 	#color reading
 	read_int()		#reads 1st color
 	move	$s3, $v0
+	check_input($s3)
+	
 	read_int()		#reads 2nd color
 	move	$s4, $v0
+	check_input($s4)
+	
 	read_int()		#reads 3rd color
 	move	$s5, $v0
+	check_input($s5)
+	
 	read_int()		#reads 4rd color
 	move	$s6, $v0
+	check_input($s6)
 	
 #=================== DRAWING RECTANGLE ==========================================
 	li	$t0, 0		#row counter
 next_row:
-	bge	$t0, $s1, terminate
+	bge	$t0, $s1, main
 	addiu	$t0, $t0, 1		#inc row counter
 	li	$t1, 0		#col counter
 draw_line:
@@ -191,5 +218,6 @@ apply_stride:
 	b	next_row
 
 terminate:
+	#exit
 	li	$v0, 10
 	syscall
