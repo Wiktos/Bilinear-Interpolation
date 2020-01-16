@@ -284,7 +284,6 @@ compute_gains:
 	mflo	$t4		#$t4 = (col3 - col1) / height
 	
 	#lower part of image (d(col) / dx)
-	andi	$t6, $s6, BLUE_BIT_MASK
 	sub	$t5, $a3, $a2
 	sll	$t5, $t5, 16
 	div	$t5, $s0
